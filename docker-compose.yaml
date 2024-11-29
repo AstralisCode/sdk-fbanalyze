@@ -19,6 +19,8 @@ services:
     environment:
       - FLASK_ENV=development
       - MONGO_URI=mongodb://mongo:27017/logs
+      - MONGO_USERNAME=root
+      - MONGO_PASSWORD=example
     volumes:
       - "./api-eventlogger/:/code"
     labels:
@@ -29,9 +31,11 @@ services:
   api-fbanalyze:
     build: api-fbanalyze/
     environment:
-       - REDIS_HOST=redis
-       - REDIS_PORT=6379
-       - MONGO_URI=mongodb://mongo:27017/fb
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MONGO_URI=mongodb://mongo:27017/fb
+      - MONGO_USERNAME=root
+      - MONGO_PASSWORD=example
     depends_on:
       - redis
       - mongo
