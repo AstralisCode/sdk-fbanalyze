@@ -1,54 +1,73 @@
-version: '3.8'
 services:
-  app:
-    build: .
-    restart: always
+
+  traefik:
+    image: "traefik:v3.2"
+    container_name: "traefik"
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entryPoints.web.address=:80"
     ports:
-      - "5000:5000"
+      - "80:80"
+      - "8080:8080"
     volumes:
-      - .:/app
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+  api-eventlogger:
+    build: api-eventlogger/
     environment:
       - FLASK_ENV=development
+      - MONGO_URI=mongodb://mongo:27017/logs
+      - MONGO_USERNAME=root
+      - MONGO_PASSWORD=example
+    volumes:
+      - "./api-eventlogger/:/code"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api-eventlogger.rule=Host(`eventlogger.localhost`)"
+      - "traefik.http.routers.api-eventlogger.entrypoints=web"
+
+  api-fbanalyze:
+    build: api-fbanalyze/
+    environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - MONGO_URI=mongodb://mongo:27017/mydatabase
+      - MONGO_URI=mongodb://mongo:27017/fb
+      - MONGO_USERNAME=root
+      - MONGO_PASSWORD=example
     depends_on:
       - redis
       - mongo
-    networks:
-      - app-network
-
-   redis:
+    ports:
+      - "9002:5000"
+    volumes:
+      - "./api-fbanalyze/:/app"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api-fbanalyze.rule=Host(`fbanalyze.localhost`)"
+      - "traefik.http.routers.api-fbanalyze.entrypoints=web"
+  
+  redis:
     image: "redis:alpine"
     restart: always
     ports:
       - "6379:6379"
     volumes:
-      - redis-data:/data
-    networks:
-      - app-network
+      - redis:/data
 
-
-   mongo:
+  mongo:
     image: mongo:latest
     container_name: mongo
     restart: always
-    env_file:
-      - ./.env
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
-      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE}
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
     ports:
       - 27017:27017
     volumes:
       - mongo:/data/db
-    networks:
-      - app-network
 
 volumes:
   redis:
   mongo:
-
-networks:
-  app-network:
